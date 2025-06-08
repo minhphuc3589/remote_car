@@ -1,3 +1,14 @@
+#include <SoftwareSerial.h>
+
+/*
+  Using SoftwareSerial to simulate the second Serial
+  
+  Note:
+    RX = 8
+    TX = 9
+*/
+SoftwareSerial SimulatedSerial(8, 9);
+
 // Using L298N to control the electricity
 const int L298N_IN1_PIN = 2;
 const int L298N_IN2_PIN = 3;
@@ -34,6 +45,7 @@ void setup() {
 
   // Initialize Serial Monitor's port
   Serial.begin(9600);
+  SimulatedSerial.begin(115200);
 
   /*
     Initialize L298N PIN
@@ -159,6 +171,10 @@ void scanObject() {
 
 /* Loop the program */
 void loop() {
+  if (Serial.available()) {
+    direction = Serial.readStringUtil('\n');
+  }
+
   switch (direction) {
     case 'W':
       goStraight(SPEED);
@@ -179,7 +195,7 @@ void loop() {
       stop();
       break;
     default:
-      Serial.println("Error! Can't read the direction.");
+      SimulatedSerial.println("Error! Can't read the direction.");
       delay(5000);
   }
 }
