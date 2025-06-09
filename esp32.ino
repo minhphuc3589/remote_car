@@ -1,6 +1,6 @@
 #include "BluetoothSerial.h"
 
-// Use to recieve data from bluetooth, used Serial Bluetooth Terminal
+// Use to recieve data from bluetooth, used "Arduino Bluetooth RC Car" application
 BluetoothSerial SerialBT;
 
 /*
@@ -13,6 +13,7 @@ BluetoothSerial SerialBT;
 */
 HardwareSerial sendToUNO(1);
 
+/* Initializes the setting up */
 void setup() {
   Serial.begin(115200);
   SerialBT.begin("ESP32_GROUP3");

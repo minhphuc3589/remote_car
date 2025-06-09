@@ -24,21 +24,21 @@ const int HY_SRF05_ECHO_PIN = 7;
 const int PIEZO_SPEAKER_PIN = 13;
 
 // Speed will be from 0 to 255
-const int SPEED = 100;
+const int SPEED = 255;
 
 /*
   Direction of the car
 
   Note:
-    W: Go Straight
-    S: Go Back
-    A: Go Left
-    D: Go Right
-    P: Pause (Stop)
+    F: Go Straight
+    B: Go Back
+    L: Go Left
+    R: Go Right
+    S: Pause (Stop)
 
-  Default: 'P'
+  Default: 'S'
 */
-char direction = 'P';
+char direction = 'S';
 
 /* Initializes the setting up */
 void setup() {
@@ -105,10 +105,6 @@ void goLeft(int speed) {
   digitalWrite(L298N_IN1_PIN, LOW);
   digitalWrite(L298N_IN2_PIN, LOW);
 
-  // The electricity will be from L298N_IN4_PIN to L298N_IN3_PIN to active gearmotor 3 and 4
-  digitalWrite(L298N_IN3_PIN, LOW);
-  digitalWrite(L298N_IN4_PIN, HIGH);
-
   // Speed of car
   analogWrite(L298N_EN_PIN, speed);
 }
@@ -119,14 +115,12 @@ void goRight(int speed) {
   digitalWrite(L298N_IN1_PIN, LOW);
   digitalWrite(L298N_IN2_PIN, HIGH);
 
-  // The electricity of both L298N_IN3_PIN and L298N_IN4_PIN will be LOW to stop to go right
-  digitalWrite(L298N_IN3_PIN, LOW);
-  digitalWrite(L298N_IN4_PIN, LOW);
-
   // Speed of car
   analogWrite(L298N_EN_PIN, speed);
 }
 
+
+/* Control 4 wheels to stop */
 void stop() {
   digitalWrite(L298N_IN1_PIN, LOW);
   digitalWrite(L298N_IN2_PIN, LOW);
@@ -176,22 +170,22 @@ void loop() {
   }
 
   switch (direction) {
-    case 'W':
+    case 'F':
       goStraight(SPEED);
       break;
-    case 'S':
+    case 'B':
       scanObject();
       goBack(SPEED);
       break;
-    case 'A':
-      goRight((int)(SPEED / 4));
+    case 'L':
+      goRight(SPEED - 50);
       goLeft(SPEED);
       break;
-    case 'D':
-      goLeft((int)(SPEED / 4));
+    case 'R':
+      goLeft(SPEED - 50);
       goRight(SPEED);
       break;
-    case 'P':
+    case 'S':
       stop();
       break;
     default:
