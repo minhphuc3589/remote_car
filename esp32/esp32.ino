@@ -1,7 +1,7 @@
 #include "BluetoothSerial.h"
 
 // Use to recieve data from bluetooth, used "Arduino Bluetooth RC Car" application
-BluetoothSerial SerialBT;
+BluetoothSerial SerialBT();
 
 /*
   Use UART1 to send data from Bluetooth
@@ -38,7 +38,7 @@ void setup() {
 void loop() {
   if (SerialBT.available()) {
     // Read data from bluetooth util the end of the line
-    String data = SerialBT.readStringUtil('\n');
+    String data = SerialBT.readStringUntil('\n');
 
     // Send data to UNO by .println()
     sendToUNO.println(data);

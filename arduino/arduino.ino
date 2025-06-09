@@ -38,7 +38,7 @@ const int SPEED = 255;
 
   Default: 'S'
 */
-char direction = 'S';
+char direction = 'F';
 
 /* Initializes the setting up */
 void setup() {
@@ -165,31 +165,33 @@ void scanObject() {
 
 /* Loop the program */
 void loop() {
-  if (Serial.available()) {
-    direction = Serial.readStringUtil('\n');
-  }
+  // if (Serial.available()) {
+  //   direction = Serial.readStringUntil('\n').charAt(0);
+  // }
 
-  switch (direction) {
-    case 'F':
-      goStraight(SPEED);
-      break;
-    case 'B':
-      scanObject();
-      goBack(SPEED);
-      break;
-    case 'L':
-      goRight(SPEED - 50);
-      goLeft(SPEED);
-      break;
-    case 'R':
-      goLeft(SPEED - 50);
-      goRight(SPEED);
-      break;
-    case 'S':
-      stop();
-      break;
-    default:
-      SimulatedSerial.println("Error! Can't read the direction.");
-      delay(5000);
-  }
+  goStraight(SPEED);
+
+  // switch (direction) {
+  //   case 'F':
+  //     goStraight(SPEED);
+  //     break;
+  //   case 'B':
+  //     scanObject();
+  //     goBack(SPEED);
+  //     break;
+  //   case 'L':
+  //     goRight(SPEED - 50);
+  //     goLeft(SPEED);
+  //     break;
+  //   case 'R':
+  //     goLeft(SPEED - 50);
+  //     goRight(SPEED);
+  //     break;
+  //   case 'S':
+  //     stop();
+  //     break;
+  //   default:
+  //     SimulatedSerial.println("Error! Can't read the direction.");
+  //     delay(5000);
+  // }
 }
