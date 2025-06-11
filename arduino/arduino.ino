@@ -16,8 +16,8 @@ const int L298N_IN1_PIN = 2;
 const int L298N_IN2_PIN = 3;
 const int L298N_IN3_PIN = 4;
 const int L298N_IN4_PIN = 5;
-const int L298N_EN_A_PIN = 11;
-const int L298N_EN_B_PIN = 12;
+const int L298N_EN_A_PIN = 10;
+const int L298N_EN_B_PIN = 11;
 
 // Using Ultra Sonic to calculate the distance between the car to object
 const int HY_SRF05_TRIG_PIN = 6;
