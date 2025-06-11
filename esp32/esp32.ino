@@ -1,7 +1,7 @@
 #include "BluetoothSerial.h"
 
 // Use to recieve data from bluetooth, used "Arduino Bluetooth RC Car" application
-BluetoothSerial SerialBT();
+BluetoothSerial SerialBT;
 
 /*
   Use UART1 to send data from Bluetooth

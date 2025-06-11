@@ -10,11 +10,14 @@
 SoftwareSerial SimulatedSerial(8, 9);
 
 // Using L298N to control the electricity
+// IN1 and IN2: RIGHT
+// IN3 and IN4: LEFT
 const int L298N_IN1_PIN = 2;
 const int L298N_IN2_PIN = 3;
 const int L298N_IN3_PIN = 4;
 const int L298N_IN4_PIN = 5;
-const int L298N_EN_PIN = 12;
+const int L298N_EN_A_PIN = 11;
+const int L298N_EN_B_PIN = 12;
 
 // Using Ultra Sonic to calculate the distance between the car to object
 const int HY_SRF05_TRIG_PIN = 6;
@@ -25,6 +28,7 @@ const int PIEZO_SPEAKER_PIN = 13;
 
 // Speed will be from 0 to 255
 const int SPEED = 255;
+const int TURN_SPEED_COEFF = 2;
 
 /*
   Direction of the car
@@ -61,7 +65,8 @@ void setup() {
   pinMode(L298N_IN2_PIN, OUTPUT);
   pinMode(L298N_IN3_PIN, OUTPUT);
   pinMode(L298N_IN4_PIN, OUTPUT);
-  pinMode(L298N_EN_PIN, OUTPUT);
+  pinMode(L298N_EN_A_PIN, OUTPUT);
+  pinMode(L298N_EN_B_PIN, OUTPUT);
 
   // Initialize Ultra Sonic PIN
   pinMode(HY_SRF05_TRIG_PIN, OUTPUT);
@@ -71,61 +76,69 @@ void setup() {
   pinMode(PIEZO_SPEAKER_PIN, OUTPUT);
 }
 
-/* Control 4 wheels to go UP */
-void goStraight(int speed) {
-  // The electricity will be from L298N_IN2_PIN to L298N_IN1_PIN to active gearmotor 1 and 2
-  digitalWrite(L298N_IN1_PIN, LOW);
-  digitalWrite(L298N_IN2_PIN, HIGH);
-
-  // The electricity will be from L298N_IN4_PIN to L298N_IN3_PIN to active gearmotor 3 and 4
-  digitalWrite(L298N_IN3_PIN, LOW);
-  digitalWrite(L298N_IN4_PIN, HIGH);
-
-  // Speed of car
-  analogWrite(L298N_EN_PIN, speed);
-}
-
-/* Control 4 wheels to go BACK */
-void goBack(int speed) {
-  // The electricity will be from L298N_IN1_PIN to L298N_IN2_PIN to active gearmotor 1 and 2
+void moveForward(int speed) {
   digitalWrite(L298N_IN1_PIN, HIGH);
   digitalWrite(L298N_IN2_PIN, LOW);
-
-  // The electricity will be from L298N_IN3_PIN to L298N_IN4_PIN to active gearmotor 3 and 4
-  digitalWrite(L298N_IN3_PIN, HIGH);
-  digitalWrite(L298N_IN4_PIN, LOW);
-
-  // Speed of car
-  analogWrite(L298N_EN_PIN, speed);
+  digitalWrite(L298N_IN3_PIN, LOW);
+  digitalWrite(L298N_IN4_PIN, HIGH);
+  analogWrite(L298N_EN_A_PIN, speed);
+  analogWrite(L298N_EN_B_PIN, speed);
 }
 
-/* Control 2 wheels AT THE RIGHT to go LEFT */
-void goLeft(int speed) {
-  // The electricity of both L298N_IN1_PIN and L298N_IN2_PIN will be LOW to stop to go left
-  digitalWrite(L298N_IN1_PIN, LOW);
-  digitalWrite(L298N_IN2_PIN, LOW);
-
-  // Speed of car
-  analogWrite(L298N_EN_PIN, speed);
-}
-
-/* Control 2 wheels AT THE LEFT to go RIGHT */
-void goRight(int speed) {
-  // The electricity will be from L298N_IN2_PIN to L298N_IN1_PIN to active gearmotor 1 and 2
+void moveBackward(int speed) {
   digitalWrite(L298N_IN1_PIN, LOW);
   digitalWrite(L298N_IN2_PIN, HIGH);
-
-  // Speed of car
-  analogWrite(L298N_EN_PIN, speed);
+  digitalWrite(L298N_IN3_PIN, HIGH);
+  digitalWrite(L298N_IN4_PIN, LOW);
+  analogWrite(L298N_EN_A_PIN, speed);
+  analogWrite(L298N_EN_B_PIN, speed);
 }
 
+void turnLeft(int speed) {
+  digitalWrite(L298N_IN1_PIN, LOW);
+  digitalWrite(L298N_IN2_PIN, HIGH);
+  digitalWrite(L298N_IN3_PIN, LOW);
+  digitalWrite(L298N_IN4_PIN, HIGH);
+  analogWrite(L298N_EN_A_PIN, speed);
+  analogWrite(L298N_EN_B_PIN, speed);
+}
 
-/* Control 4 wheels to stop */
-void stop() {
+void turnRight(int speed) {
+  digitalWrite(L298N_IN1_PIN, HIGH);
+  digitalWrite(L298N_IN2_PIN, LOW);
+  digitalWrite(L298N_IN3_PIN, HIGH);
+  digitalWrite(L298N_IN4_PIN, LOW);
+  analogWrite(L298N_EN_A_PIN, speed);
+  analogWrite(L298N_EN_B_PIN, speed);
+}
+
+void sharpLeftForward(int speed) {
+  moveForward(speed);
+  analogWrite(L298N_EN_B_PIN, speed / TURN_SPEED_COEFF);
+}
+
+void sharpRightForward(int speed) {
+  moveForward(speed);
+  analogWrite(L298N_EN_A_PIN, speed / TURN_SPEED_COEFF);
+}
+
+void sharpLeftBackward(int speed) {
+  moveBackward(speed);
+  analogWrite(L298N_EN_B_PIN, speed / TURN_SPEED_COEFF);
+}
+
+void sharpRightBackward(int speed) {
+  moveBackward(speed);
+  analogWrite(L298N_EN_A_PIN, speed / TURN_SPEED_COEFF);
+}
+
+void stopMotors() {
   digitalWrite(L298N_IN1_PIN, LOW);
   digitalWrite(L298N_IN2_PIN, LOW);
   digitalWrite(L298N_IN3_PIN, LOW);
   digitalWrite(L298N_IN4_PIN, LOW);
+  analogWrite(L298N_EN_A_PIN, 0);
+  analogWrite(L298N_EN_B_PIN, 0);
 }
 
 /* Using UltraSonic to get the distance between the car and object */
@@ -162,36 +175,46 @@ void scanObject() {
     analogWrite(PIEZO_SPEAKER_PIN, 0);
   }
 }
-
 /* Loop the program */
 void loop() {
-  // if (Serial.available()) {
-  //   direction = Serial.readStringUntil('\n').charAt(0);
-  // }
+  if (Serial.available()) {
+    direction = Serial.readStringUntil('\n').charAt(0);
+  }
 
-  goStraight(SPEED);
+  /* Direction of car */
+  switch (direction) {
+    case 'F':
+      moveForward(carSpeed);
+      break;
+    case 'B':
+      moveBackward(carSpeed);
+      break;
+    case 'L':
+      turnLeft(carSpeed);
+      break;
+    case 'R':
+      turnRight(carSpeed);
+      break;
+    case 'G':
+      sharpLeftForward(carSpeed);
+      break;
+    case 'I':
+      sharpRightForward(carSpeed);
+      break;
+    case 'H':
+      sharpLeftBackward(carSpeed);
+      break;
+    case 'J':
+      sharpRightBackward(carSpeed);
+      break;
+    default:
+      stopMotors();
+      break;
+  }
 
-  // switch (direction) {
-  //   case 'F':
-  //     goStraight(SPEED);
-  //     break;
-  //   case 'B':
-  //     scanObject();
-  //     goBack(SPEED);
-  //     break;
-  //   case 'L':
-  //     goRight(SPEED - 50);
-  //     goLeft(SPEED);
-  //     break;
-  //   case 'R':
-  //     goLeft(SPEED - 50);
-  //     goRight(SPEED);
-  //     break;
-  //   case 'S':
-  //     stop();
-  //     break;
-  //   default:
-  //     SimulatedSerial.println("Error! Can't read the direction.");
-  //     delay(5000);
-  // }
+  // /* Test */
+  // moveForward(SPEED);
+  // delay(5000);
+  // turnLeft(SPEED);
+  // delay(5000);
 }
