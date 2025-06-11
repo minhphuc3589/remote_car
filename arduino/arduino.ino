@@ -34,10 +34,10 @@ const int TURN_SPEED_COEFF = 2;
   Direction of the car
 
   Note:
-    F: Go Straight
-    B: Go Back
-    L: Go Left
-    R: Go Right
+    F: Move Forward
+    B: Move Backward
+    L: Turn Left
+    R: Turn Right
     S: Pause (Stop)
 
   Default: 'S'
@@ -49,7 +49,7 @@ void setup() {
 
   // Initialize Serial Monitor's port
   Serial.begin(9600);
-  SimulatedSerial.begin(115200);
+  SimulatedSerial.begin(9600);
 
   /*
     Initialize L298N PIN
