@@ -29,9 +29,11 @@ const int PIEZO_SPEAKER_PIN = 8;
 // OPERATING PARAMETERS
 //==================================================================
 
-int MAX_SPEED = 250;                   // Robot's travel speed (0-255)
-const int TURN_SPEED_DIVISOR = 2;            // Used for arc turns. Higher value = sharper turn.
-const int OBSTACLE_DETECTION_DISTANCE = 20;  // Alert distance in cm
+int MAX_SPEED = 250;                         // Robot's travel speed (0-255)
+const int TURN_SPEED_DIVISOR = 10;           // Used for arc turns. Higher value = sharper turn.
+const int OBSTACLE_DETECTION_DISTANCE_STOP = 20; // Alert and stop car
+const int OBSTACLE_DETECTION_DISTANCE = 30;  // Alert distance in cm
+bool isStop = false;
 
 //==================================================================
 // SETUP FUNCTION
@@ -153,9 +155,10 @@ int getDistance() {
   digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(ULTRASONIC_TRIG_PIN, HIGH);
-  delayMicroseconds(10);
+  delayMicroseconds(5);
   digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
   long duration = pulseIn(ULTRASONIC_ECHO_PIN, HIGH);
+  
   if (duration > 0) {
     return duration / 29.412 / 2;
   }
@@ -165,12 +168,15 @@ int getDistance() {
 void alertOnObstacle() {
   int distance = getDistance();
 
-  if (distance < OBSTACLE_DETECTION_DISTANCE) {
-    MAX_SPEED = 180;
+  if (distance < OBSTACLE_DETECTION_DISTANCE_STOP) {
     digitalWrite(PIEZO_SPEAKER_PIN, LOW);  // Turn buzzer ON
+    isStop = true;
+  } else if (distance < OBSTACLE_DETECTION_DISTANCE) {
+    digitalWrite(PIEZO_SPEAKER_PIN, LOW);  // Turn buzzer ON
+    isStop = false;
   } else {
-    MAX_SPEED = 250;
     digitalWrite(PIEZO_SPEAKER_PIN, HIGH);  // Turn buzzer OFF
+    isStop = false;
   }
 }
 
@@ -185,33 +191,31 @@ void loop() {
   // Check for an incoming command from the Serial Monitor
   if (HCSerial.available()) {
     command = HCSerial.read();
-
-    Serial.println(command);
   }
 
+  alertOnObstacle();
 
   // Execute an action immediately based on the command character
   switch (command) {
     case 'F': moveForward(); break;       // Forward
     case 'B': 
-      alertOnObstacle();
-      moveBackward(); 
+      if (isStop) stopMotors();
+      else moveBackward(); 
       break;      // Backward
     case 'L': turnLeftOnSpot(); break;    // Turn Left on the spot
     case 'R': turnRightOnSpot(); break;   // Turn Right on the spot
     case 'G': arcForwardLeft(); break;    // Arc Forward-Left
     case 'I': arcForwardRight(); break;   // Arc Forward-Right
     case 'H': 
-      alertOnObstacle(); 
-      arcBackwardLeft(); 
+      if (isStop) stopMotors();
+      else arcBackwardLeft(); 
       break;   // Arc Backward-Left
-    case 'J': 
-      alertOnObstacle();
-      arcBackwardRight(); 
+    case 'J':
+      if (isStop) stopMotors(); 
+      else arcBackwardRight(); 
       break;  // Arc Backward-Right
-
-    case 'S':  // Stop command
-    default:   // Any other character also stops the robot
+    case 'S':                             // Stop command
+    default:                              // Any other character also stops the robot
       stopMotors();
       break;
   }
