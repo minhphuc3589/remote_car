@@ -1,220 +1,218 @@
 #include <SoftwareSerial.h>
 
-/*
-  Using SoftwareSerial to simulate the second Serial
-  
-  Note:
-    RX = 8
-    TX = 9
-*/
-SoftwareSerial SimulatedSerial(8, 9);
+// HC Serial
+const int BLUETOOTH_RX_PIN = 11;
+const int BLUETOOTH_TX_PIN = 12;
+SoftwareSerial HCSerial(BLUETOOTH_RX_PIN, BLUETOOTH_TX_PIN);
 
-// Using L298N to control the electricity
-// IN1 and IN2: RIGHT
-// IN3 and IN4: LEFT
+//==================================================================
+// HARDWARE CONFIGURATION & PIN DEFINITIONS
+//==================================================================
+
+// --- L298N Motor Driver ---
 const int L298N_IN1_PIN = 2;
 const int L298N_IN2_PIN = 3;
+const int L298N_ENA = 9;  // ENA
+
 const int L298N_IN3_PIN = 4;
 const int L298N_IN4_PIN = 5;
-const int L298N_EN_A_PIN = 10;
-const int L298N_EN_B_PIN = 11;
+const int L298N_ENB = 10;  // ENB
 
-// Using Ultra Sonic to calculate the distance between the car to object
-const int HY_SRF05_TRIG_PIN = 6;
-const int HY_SRF05_ECHO_PIN = 7;
+// --- Ultrasonic Distance Sensor (HY-SRF05) ---
+const int ULTRASONIC_TRIG_PIN = 6;
+const int ULTRASONIC_ECHO_PIN = 7;
 
-// Using Piezo Speaker to alert when having object within distance
-const int PIEZO_SPEAKER_PIN = 13;
+// --- Piezo Buzzer ---
+const int PIEZO_SPEAKER_PIN = 8;
 
-// Speed will be from 0 to 255
-const int SPEED = 255;
-const int TURN_SPEED_COEFF = 2;
+//==================================================================
+// OPERATING PARAMETERS
+//==================================================================
 
-/*
-  Direction of the car
+int MAX_SPEED = 250;                   // Robot's travel speed (0-255)
+const int TURN_SPEED_DIVISOR = 2;            // Used for arc turns. Higher value = sharper turn.
+const int OBSTACLE_DETECTION_DISTANCE = 20;  // Alert distance in cm
 
-  Note:
-    F: Move Forward
-    B: Move Backward
-    L: Turn Left
-    R: Turn Right
-    S: Pause (Stop)
-
-  Default: 'S'
-*/
-char direction = 'F';
-
-/* Initializes the setting up */
+//==================================================================
+// SETUP FUNCTION
+//==================================================================
 void setup() {
-
-  // Initialize Serial Monitor's port
   Serial.begin(9600);
-  SimulatedSerial.begin(9600);
+  HCSerial.begin(9600);
 
-  /*
-    Initialize L298N PIN
-
-    According the theory:
-      The electricity will be from DC+ to DC-
-
-    Note:
-      If PIN is LOW, that means it's having an Anode (DC-)
-      If PIN is HIGH, that means it's having a Cathode (DC+)
-  */
+  // Configure L298N pins
   pinMode(L298N_IN1_PIN, OUTPUT);
   pinMode(L298N_IN2_PIN, OUTPUT);
   pinMode(L298N_IN3_PIN, OUTPUT);
   pinMode(L298N_IN4_PIN, OUTPUT);
-  pinMode(L298N_EN_A_PIN, OUTPUT);
-  pinMode(L298N_EN_B_PIN, OUTPUT);
+  pinMode(L298N_ENA, OUTPUT);
+  pinMode(L298N_ENB, OUTPUT);
 
-  // Initialize Ultra Sonic PIN
-  pinMode(HY_SRF05_TRIG_PIN, OUTPUT);
-  pinMode(HY_SRF05_ECHO_PIN, INPUT);
+  // Configure Ultrasonic Sensor pins
+  pinMode(ULTRASONIC_TRIG_PIN, OUTPUT);
+  pinMode(ULTRASONIC_ECHO_PIN, INPUT);
 
-  // Initialize Piezo Speaker PIN
+  // Configure Piezo Buzzer pin (Active-Low)
   pinMode(PIEZO_SPEAKER_PIN, OUTPUT);
+  digitalWrite(PIEZO_SPEAKER_PIN, HIGH);
+
+  Serial.println("System initialized. Awaiting commands.");
+  delay(1000);  // Wait for sensors to stabilize
 }
 
-void moveForward(int speed) {
-  digitalWrite(L298N_IN1_PIN, HIGH);
-  digitalWrite(L298N_IN2_PIN, LOW);
-  digitalWrite(L298N_IN3_PIN, LOW);
-  digitalWrite(L298N_IN4_PIN, HIGH);
-  analogWrite(L298N_EN_A_PIN, speed);
-  analogWrite(L298N_EN_B_PIN, speed);
-}
-
-void moveBackward(int speed) {
-  digitalWrite(L298N_IN1_PIN, LOW);
-  digitalWrite(L298N_IN2_PIN, HIGH);
-  digitalWrite(L298N_IN3_PIN, HIGH);
-  digitalWrite(L298N_IN4_PIN, LOW);
-  analogWrite(L298N_EN_A_PIN, speed);
-  analogWrite(L298N_EN_B_PIN, speed);
-}
-
-void turnLeft(int speed) {
-  digitalWrite(L298N_IN1_PIN, LOW);
-  digitalWrite(L298N_IN2_PIN, HIGH);
-  digitalWrite(L298N_IN3_PIN, LOW);
-  digitalWrite(L298N_IN4_PIN, HIGH);
-  analogWrite(L298N_EN_A_PIN, speed);
-  analogWrite(L298N_EN_B_PIN, speed);
-}
-
-void turnRight(int speed) {
-  digitalWrite(L298N_IN1_PIN, HIGH);
-  digitalWrite(L298N_IN2_PIN, LOW);
-  digitalWrite(L298N_IN3_PIN, HIGH);
-  digitalWrite(L298N_IN4_PIN, LOW);
-  analogWrite(L298N_EN_A_PIN, speed);
-  analogWrite(L298N_EN_B_PIN, speed);
-}
-
-void sharpLeftForward(int speed) {
-  moveForward(speed);
-  analogWrite(L298N_EN_B_PIN, speed / TURN_SPEED_COEFF);
-}
-
-void sharpRightForward(int speed) {
-  moveForward(speed);
-  analogWrite(L298N_EN_A_PIN, speed / TURN_SPEED_COEFF);
-}
-
-void sharpLeftBackward(int speed) {
-  moveBackward(speed);
-  analogWrite(L298N_EN_B_PIN, speed / TURN_SPEED_COEFF);
-}
-
-void sharpRightBackward(int speed) {
-  moveBackward(speed);
-  analogWrite(L298N_EN_A_PIN, speed / TURN_SPEED_COEFF);
-}
+//==================================================================
+// MOTOR CONTROL FUNCTIONS
+//==================================================================
 
 void stopMotors() {
   digitalWrite(L298N_IN1_PIN, LOW);
   digitalWrite(L298N_IN2_PIN, LOW);
   digitalWrite(L298N_IN3_PIN, LOW);
   digitalWrite(L298N_IN4_PIN, LOW);
-  analogWrite(L298N_EN_A_PIN, 0);
-  analogWrite(L298N_EN_B_PIN, 0);
+  analogWrite(L298N_ENA, 0);
+  analogWrite(L298N_ENB, 0);
 }
 
-/* Using UltraSonic to get the distance between the car and object */
+void moveForward() {
+  digitalWrite(L298N_IN1_PIN, LOW);
+  digitalWrite(L298N_IN2_PIN, HIGH);
+  digitalWrite(L298N_IN3_PIN, HIGH);
+  digitalWrite(L298N_IN4_PIN, LOW);
+  analogWrite(L298N_ENA, MAX_SPEED);
+  analogWrite(L298N_ENB, MAX_SPEED);
+}
+
+void moveBackward() {
+  digitalWrite(L298N_IN1_PIN, HIGH);
+  digitalWrite(L298N_IN2_PIN, LOW);
+  digitalWrite(L298N_IN3_PIN, LOW);
+  digitalWrite(L298N_IN4_PIN, HIGH);
+  analogWrite(L298N_ENA, MAX_SPEED);
+  analogWrite(L298N_ENB, MAX_SPEED);
+}
+
+void turnLeftOnSpot() {
+  digitalWrite(L298N_IN1_PIN, HIGH);
+  digitalWrite(L298N_IN2_PIN, LOW);
+  digitalWrite(L298N_IN3_PIN, HIGH);
+  digitalWrite(L298N_IN4_PIN, LOW);
+  analogWrite(L298N_ENA, MAX_SPEED);
+  analogWrite(L298N_ENB, MAX_SPEED);
+}
+
+void turnRightOnSpot() {
+  digitalWrite(L298N_IN1_PIN, LOW);
+  digitalWrite(L298N_IN2_PIN, HIGH);
+  digitalWrite(L298N_IN3_PIN, LOW);
+  digitalWrite(L298N_IN4_PIN, HIGH);
+  analogWrite(L298N_ENA, MAX_SPEED);
+  analogWrite(L298N_ENB, MAX_SPEED);
+}
+
+void arcForwardLeft() {
+  digitalWrite(L298N_IN1_PIN, HIGH);
+  digitalWrite(L298N_IN2_PIN, LOW);
+  digitalWrite(L298N_IN3_PIN, HIGH);
+  digitalWrite(L298N_IN4_PIN, LOW);
+  analogWrite(L298N_ENA, MAX_SPEED / TURN_SPEED_DIVISOR);
+  analogWrite(L298N_ENB, MAX_SPEED);
+}
+
+void arcForwardRight() {
+  digitalWrite(L298N_IN1_PIN, LOW);
+  digitalWrite(L298N_IN2_PIN, HIGH);
+  digitalWrite(L298N_IN3_PIN, LOW);
+  digitalWrite(L298N_IN4_PIN, HIGH);
+  analogWrite(L298N_ENA, MAX_SPEED);
+  analogWrite(L298N_ENB, MAX_SPEED / TURN_SPEED_DIVISOR);
+}
+
+void arcBackwardLeft() {
+  digitalWrite(L298N_IN1_PIN, HIGH);
+  digitalWrite(L298N_IN2_PIN, LOW);
+  digitalWrite(L298N_IN3_PIN, HIGH);
+  digitalWrite(L298N_IN4_PIN, LOW);
+  analogWrite(L298N_ENA, MAX_SPEED);
+  analogWrite(L298N_ENB, MAX_SPEED / TURN_SPEED_DIVISOR);
+}
+
+void arcBackwardRight() {
+  digitalWrite(L298N_IN1_PIN, LOW);
+  digitalWrite(L298N_IN2_PIN, HIGH);
+  digitalWrite(L298N_IN3_PIN, LOW);
+  digitalWrite(L298N_IN4_PIN, HIGH);
+  analogWrite(L298N_ENA, MAX_SPEED / TURN_SPEED_DIVISOR);
+  analogWrite(L298N_ENB, MAX_SPEED);
+}
+
+//==================================================================
+// SENSOR AND ALERT FUNCTIONS
+//==================================================================
+
 int getDistance() {
-  unsigned long duration;
-
-  digitalWrite(HY_SRF05_TRIG_PIN, LOW);
+  digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
   delayMicroseconds(2);
-  digitalWrite(HY_SRF05_TRIG_PIN, HIGH);
-  delayMicroseconds(5);
-  digitalWrite(HY_SRF05_TRIG_PIN, LOW);
-
-  duration = pulseIn(HY_SRF05_ECHO_PIN, HIGH);
-
-  int distance = int(duration / 29.412 / 2);
-
-  return distance;
+  digitalWrite(ULTRASONIC_TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(ULTRASONIC_TRIG_PIN, LOW);
+  long duration = pulseIn(ULTRASONIC_ECHO_PIN, HIGH);
+  if (duration > 0) {
+    return duration / 29.412 / 2;
+  }
+  return 999;
 }
 
-/* Using Piezo Speaker to alert if having object in range*/
-void scanObject() {
+void alertOnObstacle() {
   int distance = getDistance();
 
-  if (distance < 20) {
-    analogWrite(PIEZO_SPEAKER_PIN, 255);
-    delay(100);
-  } else if (distance < 50) {
-    analogWrite(PIEZO_SPEAKER_PIN, 200);
-    delay(500);
-  } else if (distance < 100) {
-    analogWrite(PIEZO_SPEAKER_PIN, 150);
-    delay(700);
+  if (distance < OBSTACLE_DETECTION_DISTANCE) {
+    MAX_SPEED = 180;
+    digitalWrite(PIEZO_SPEAKER_PIN, LOW);  // Turn buzzer ON
   } else {
-    analogWrite(PIEZO_SPEAKER_PIN, 0);
+    MAX_SPEED = 250;
+    digitalWrite(PIEZO_SPEAKER_PIN, HIGH);  // Turn buzzer OFF
   }
 }
-/* Loop the program */
+
+//==================================================================
+// MAIN LOOP
+//==================================================================
+
+char command = 'S';
+
 void loop() {
-  if (Serial.available()) {
-    direction = Serial.readStringUntil('\n').charAt(0);
+
+  // Check for an incoming command from the Serial Monitor
+  if (HCSerial.available()) {
+    command = HCSerial.read();
+
+    Serial.println(command);
   }
 
-  /* Direction of car */
-  switch (direction) {
-    case 'F':
-      moveForward(carSpeed);
-      break;
-    case 'B':
-      moveBackward(carSpeed);
-      break;
-    case 'L':
-      turnLeft(carSpeed);
-      break;
-    case 'R':
-      turnRight(carSpeed);
-      break;
-    case 'G':
-      sharpLeftForward(carSpeed);
-      break;
-    case 'I':
-      sharpRightForward(carSpeed);
-      break;
-    case 'H':
-      sharpLeftBackward(carSpeed);
-      break;
-    case 'J':
-      sharpRightBackward(carSpeed);
-      break;
-    default:
+
+  // Execute an action immediately based on the command character
+  switch (command) {
+    case 'F': moveForward(); break;       // Forward
+    case 'B': 
+      alertOnObstacle();
+      moveBackward(); 
+      break;      // Backward
+    case 'L': turnLeftOnSpot(); break;    // Turn Left on the spot
+    case 'R': turnRightOnSpot(); break;   // Turn Right on the spot
+    case 'G': arcForwardLeft(); break;    // Arc Forward-Left
+    case 'I': arcForwardRight(); break;   // Arc Forward-Right
+    case 'H': 
+      alertOnObstacle(); 
+      arcBackwardLeft(); 
+      break;   // Arc Backward-Left
+    case 'J': 
+      alertOnObstacle();
+      arcBackwardRight(); 
+      break;  // Arc Backward-Right
+
+    case 'S':  // Stop command
+    default:   // Any other character also stops the robot
       stopMotors();
       break;
   }
-
-  // /* Test */
-  // moveForward(SPEED);
-  // delay(5000);
-  // turnLeft(SPEED);
-  // delay(5000);
 }
